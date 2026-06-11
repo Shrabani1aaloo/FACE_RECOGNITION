@@ -4,26 +4,47 @@ import joblib
 import numpy as np
 from PIL import Image
 
+# Load trained model
 model = joblib.load("face_model.pkl")
 encoder = joblib.load("label_encoder.pkl")
 
+# Face detector
 face_detector = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
 st.title("Face Recognition System")
 
-uploaded_file = st.file_uploader(
-    "Upload an image",
-    type=["jpg", "jpeg", "png"]
+option = st.radio(
+    "Choose Input Method",
+    ["Upload Image", "Use Camera"]
 )
 
-if uploaded_file is not None:
+image = None
 
-    image = Image.open(uploaded_file)
+if option == "Upload Image":
+    uploaded_file = st.file_uploader(
+        "Upload an image",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+
+elif option == "Use Camera":
+    camera_file = st.camera_input("Take a Picture")
+
+    if camera_file is not None:
+        image = Image.open(camera_file)
+
+if image is not None:
+
     image_np = np.array(image)
 
-    gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+    gray = cv2.cvtColor(
+        image_np,
+        cv2.COLOR_RGB2GRAY
+    )
 
     faces = face_detector.detectMultiScale(
         gray,
@@ -34,16 +55,24 @@ if uploaded_file is not None:
     for (x, y, w, h) in faces:
 
         face = gray[y:y+h, x:x+w]
-        face = cv2.resize(face, (100, 100))
+
+        face = cv2.resize(
+            face,
+            (100, 100)
+        )
+
         face = face.flatten().reshape(1, -1)
 
         prediction = model.predict(face)
-        name = encoder.inverse_transform(prediction)[0]
+
+        name = encoder.inverse_transform(
+            prediction
+        )[0]
 
         cv2.rectangle(
             image_np,
             (x, y),
-            (x+w, y+h),
+            (x + w, y + h),
             (0, 255, 0),
             2
         )
@@ -51,11 +80,15 @@ if uploaded_file is not None:
         cv2.putText(
             image_np,
             name,
-            (x, y-10),
+            (x, y - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
             (0, 255, 0),
             2
         )
 
-    st.image(image_np)
+    st.image(
+        image_np,
+        caption="Recognition Result",
+        use_container_width=True
+    )
